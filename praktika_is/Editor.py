@@ -26,7 +26,7 @@ END_STYLE_ARROW = 1
 END_STYLE_CIRCLE = 2
 END_STYLE_SQUARE = 3
 
-class ConnectionStyleDialog(QDialog):
+class ConnectionStyleDialog(QDialog): #Диалог настройки стилей соединений
     def __init__(self, connection=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Настройка соединения")
@@ -80,12 +80,12 @@ class ConnectionStyleDialog(QDialog):
             self.end_style_combo.setCurrentIndex(connection.end_style)
             self.width_spin.setText(str(connection.pen().width()))
     
-    def choose_color(self):
+    def choose_color(self): #Открывает диалог выбора цвета
         color = QColorDialog.getColor(self.current_color, self)
         if color.isValid():
             self.current_color = color
     
-    def get_style(self):
+    def get_style(self): #Возращает текущие настройки стиля (в виде словаря)
         return {
             'name': self.name_edit.text(),
             'color': self.current_color.name(),
@@ -95,7 +95,7 @@ class ConnectionStyleDialog(QDialog):
             'width': int(self.width_spin.text())
         }
 
-class PortItem(QGraphicsEllipseItem):
+class PortItem(QGraphicsEllipseItem): #Порт оборудования
     def __init__(self, port_type, pos, size, parent, port_index):
         super().__init__(-size//2, -size//2, size, size, parent)
         self.port_type = port_type
@@ -114,7 +114,7 @@ class PortItem(QGraphicsEllipseItem):
         self.setCursor(Qt.CrossCursor)
         self.label = None
 
-    def contextMenuEvent(self, event):
+    def contextMenuEvent(self, event): #Показывает контекстное меню для удаления соединений
         scene = self.scene()
         if not scene or not hasattr(scene, 'get_connections_for_port'):
             return
@@ -131,19 +131,19 @@ class PortItem(QGraphicsEllipseItem):
             for conn in connections:
                 scene.delete_connection(conn)
 
-    def shape(self):
+    def shape(self): #Определяет область взаимодействия
         path = super().shape()
         path.addEllipse(self.rect().adjusted(-5, -5, 5, 5))
         return path
 
-    def add_label_to_scene(self, scene):
+    def add_label_to_scene(self, scene): #Добавляет подпись типа порта
         self.label = QGraphicsTextItem(self.port_type)
         self.label.setZValue(200)
         self.label.setDefaultTextColor(Qt.darkBlue)
         scene.addItem(self.label)
         self.update_label_position()
 
-    def update_label_position(self):
+    def update_label_position(self): #Обновляет позицию подписи типа порта при перемещении
         if not self.label:
             return
         port_pos = self.scenePos()
@@ -155,29 +155,29 @@ class PortItem(QGraphicsEllipseItem):
         else:
             self.label.setPos(port_pos.x() + 10, port_pos.y() + offset_y)
 
-    def hoverEnterEvent(self, event):
+    def hoverEnterEvent(self, event): #Изменяет цвет при наведении курсора
         self.setBrush(QBrush(Qt.yellow))
         super().hoverEnterEvent(event)
 
-    def hoverLeaveEvent(self, event):
+    def hoverLeaveEvent(self, event): #Изменяет цвет при отводе курсора
         color = QColor(hash(self.port_type) % 256,
                      hash(self.port_type + "1") % 256,
                      hash(self.port_type + "2") % 256)
         self.setBrush(QBrush(color))
         super().hoverLeaveEvent(event)
 
-    def update_connections(self):
+    def update_connections(self): #Обновляет связанные соединения при перемещении
         scene = self.scene()
         if scene and hasattr(scene, 'update_connections_for_port'):
             scene.update_connections_for_port(self)
 
-    def itemChange(self, change, value):
+    def itemChange(self, change, value): #Обрабатывает изменения позиции устройтсва
         if change == QGraphicsItem.ItemScenePositionHasChanged:
             self.update_connections()
             self.update_label_position()
         return super().itemChange(change, value)
 
-class EquipmentItem(QGraphicsRectItem):
+class EquipmentItem(QGraphicsRectItem): #Графический элемент оборудования (экземпляр оборудования)
     def __init__(self, rect, name, eq_type, ports, parent=None):
         super().__init__(rect, parent)
         self.name = name
@@ -199,7 +199,7 @@ class EquipmentItem(QGraphicsRectItem):
             port_item.setPos(port_pos)
             self.port_items.append(port_item)
 
-    def contextMenuEvent(self, event):
+    def contextMenuEvent(self, event): #Показывает меня для удаления экземпляра оборудования
         menu = QMenu()
         delete_action = menu.addAction("Удалить оборудование")
         action = menu.exec_(event.screenPos())
@@ -209,11 +209,11 @@ class EquipmentItem(QGraphicsRectItem):
             if scene and hasattr(scene, 'delete_equipment_item'):
                 scene.delete_equipment_item(self)
 
-    def add_labels_to_scene(self, scene):
+    def add_labels_to_scene(self, scene): #Добавляет подписи для всех портов на сцену
         for port in self.port_items:
             port.add_label_to_scene(scene)
-#поискать, где индекс
-    def get_port_position(self, port_index, total_ports):
+
+    def get_port_position(self, port_index, total_ports): #Вычисляет позицию порта на устройстве
         rect = self.rect()
         port_side = port_index % 2
         pos_on_side = (port_index // 2) + 1
@@ -228,13 +228,13 @@ class EquipmentItem(QGraphicsRectItem):
 
         return QPointF(x, y)
 
-    def paint(self, painter, option, widget=None):
+    def paint(self, painter, option, widget=None): #Отрисовка текста внутри прямоугольника (устройства)
         super().paint(painter, option, widget)
         painter.setFont(QFont("Arial", 8))
         text_rect = self.rect().adjusted(5, 5, -5, -5)
         painter.drawText(text_rect, Qt.AlignTop | Qt.AlignLeft, self.text)
 
-class ConnectionItem(QGraphicsPathItem):
+class ConnectionItem(QGraphicsPathItem): #Соединение между устройствами
     def __init__(self, start_port, end_port, style=None):
         super().__init__()
         self.start_port = start_port
@@ -253,7 +253,7 @@ class ConnectionItem(QGraphicsPathItem):
         self.setZValue(10)
         self.update_path()
     
-    def apply_style(self, style):
+    def apply_style(self, style): #Применяет параметры стиля к соединению
         self.name = style.get('name', "")
         self.line_style = style.get('line_style', LINE_STYLE_CURVE)
         self.start_style = style.get('start_style', END_STYLE_NONE)
@@ -264,7 +264,7 @@ class ConnectionItem(QGraphicsPathItem):
         pen = QPen(self.color, self.width)
         self.setPen(pen)
     
-    def update_path(self):
+    def update_path(self): #Обновляет форму линии (прямая/ломанная/кривая)
         path = QPainterPath()
         start = self.start_port.scenePos()
         end = self.end_port.scenePos()
@@ -304,7 +304,7 @@ class ConnectionItem(QGraphicsPathItem):
         self.draw_end_style(start, end, self.start_style, True)
         self.draw_end_style(end, start, self.end_style, False)
 
-    def draw_end_style(self, pos, opposite_pos, style, is_start):
+    def draw_end_style(self, pos, opposite_pos, style, is_start): #Отрисовка окончаний линий
         if style == END_STYLE_NONE:
             return
         
@@ -359,7 +359,7 @@ class ConnectionItem(QGraphicsPathItem):
             square.setBrush(QBrush(self.color))
             square.setPen(QPen(Qt.NoPen))
     
-    def contextMenuEvent(self, event):
+    def contextMenuEvent(self, event): #Меню для изменения стиля/удаления соединения
         menu = QMenu()
         style_action = menu.addAction("Изменить стиль")
         delete_action = menu.addAction("Удалить соединение")
@@ -373,7 +373,7 @@ class ConnectionItem(QGraphicsPathItem):
             if scene and hasattr(scene, 'delete_connection'):
                 scene.delete_connection(self)
     
-    def edit_style(self):
+    def edit_style(self): #Открывает диалог изменения стиля
         style = {
             'name': self.name,
             'color': self.color.name(),
@@ -392,7 +392,7 @@ class ConnectionItem(QGraphicsPathItem):
             if scene and hasattr(scene, 'save_schema'):
                 scene.save_schema()
 
-class EquipmentView(QGraphicsView):
+class EquipmentView(QGraphicsView): #Отображения сцены с оборудованием
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
         self.setRenderHint(QPainter.Antialiasing)
@@ -400,7 +400,7 @@ class EquipmentView(QGraphicsView):
         self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         self.setInteractive(True)
 
-class EquipmentTypeDialog(QDialog):
+class EquipmentTypeDialog(QDialog): #Диалог создания нового типа оборудования
     def __init__(self, schema_path):
         super().__init__()
         self.setWindowTitle("Создание типа оборудования")
@@ -420,7 +420,7 @@ class EquipmentTypeDialog(QDialog):
 
         self.setLayout(layout)
 
-    def save_type(self):
+    def save_type(self): #Сохраняет тип оборудования в xml файл
         name = self.name_input.text().strip()
         ports = self.ports_input.text().strip().split()
 
@@ -443,7 +443,7 @@ class EquipmentTypeDialog(QDialog):
 
         self.accept()
 
-class EquipmentInstanceDialog(QDialog):
+class EquipmentInstanceDialog(QDialog): #Диалог выбора типа оборудования
     def __init__(self, scene, schema_path):
         super().__init__()
         self.setWindowTitle("Создание экземпляра оборудования")
@@ -464,7 +464,7 @@ class EquipmentInstanceDialog(QDialog):
         layout.addWidget(self.ok_button)
         self.setLayout(layout)
 
-    def load_types(self):
+    def load_types(self): #Загружает существующий типы оборудования из xml файлов
         types_dir = os.path.join(self.schema_path, "equipment_types")
         if not os.path.exists(types_dir):
             return []
@@ -481,7 +481,7 @@ class EquipmentInstanceDialog(QDialog):
                     print(f"Ошибка при загрузке типа {filename}: {e}")
         return types
 
-    def go_next(self):
+    def go_next(self): #Переходит к созданию экземпляра выбранного типа оборудования
         selected_type = self.type_selector.currentText()
         if not selected_type:
             QMessageBox.warning(self, "Ошибка", "Выберите тип.")
@@ -503,7 +503,7 @@ class EquipmentInstanceDialog(QDialog):
         self.close()
         PortsEntryDialog(self.scene, selected_type, ports).exec_()
 
-class PortsEntryDialog(QDialog):
+class PortsEntryDialog(QDialog): #Диалог создания экземпляра оборудования
     def __init__(self, scene, eq_type, ports):
         super().__init__()
         self.setWindowTitle("Создание экземпляра")
@@ -521,7 +521,7 @@ class PortsEntryDialog(QDialog):
 
         self.setLayout(layout)
 
-    def create_instance(self):
+    def create_instance(self): #Создает новый экземпляр на сцене
         name = self.name_input.text().strip()
         if not name:
             QMessageBox.warning(self, "Ошибка", "Введите название.")
@@ -530,7 +530,7 @@ class PortsEntryDialog(QDialog):
         self.scene.add_equipment_instance(name, self.eq_type, self.ports)
         self.accept()
 
-class EquipmentScene(QGraphicsScene):
+class EquipmentScene(QGraphicsScene): #Сцена для работы с графическими элементами
     def __init__(self, parent=None):
         super().__init__(parent)
         self.connections = []
@@ -539,7 +539,7 @@ class EquipmentScene(QGraphicsScene):
         self.port_size = 10
         self.schema_path = None
 
-    def load_schema(self, schema_path):
+    def load_schema(self, schema_path): #Загружает схему из json файла
         self.schema_path = schema_path
         schema_file = os.path.join(schema_path, os.path.basename(schema_path) + ".json")
         
@@ -614,7 +614,7 @@ class EquipmentScene(QGraphicsScene):
         except Exception as e:
             print("Ошибка при загрузке схемы:", e)
 
-    def save_schema(self):
+    def save_schema(self): #Сохраняет текущую схему в файл
         if not self.schema_path:
             return False
             
@@ -662,7 +662,7 @@ class EquipmentScene(QGraphicsScene):
         
         return True
 
-    def delete_equipment_item(self, equipment):
+    def delete_equipment_item(self, equipment): #Удаляет экземпляр оборудования и связанные соединения
         connections_to_delete = []
         for conn in self.connections:
             start_eq = conn.start_port.parentItem()
@@ -680,17 +680,17 @@ class EquipmentScene(QGraphicsScene):
         self.removeItem(equipment)
         self.save_schema()
 
-    def delete_connection(self, connection):
+    def delete_connection(self, connection): #Удаляет соединение
         if connection in self.connections:
             self.removeItem(connection)
             self.connections.remove(connection)
             self.save_schema()
 
-    def get_connections_for_port(self, port):
+    def get_connections_for_port(self, port): #Возвращает соединение для порта
         return [conn for conn in self.connections
                 if conn.start_port == port or conn.end_port == port]
 
-    def add_equipment_instance(self, name, eq_type, ports, rect=None, pos=None):
+    def add_equipment_instance(self, name, eq_type, ports, rect=None, pos=None): #Добавляет новые устройства на схему
         if rect is None:
             rect = QRectF(0, 0, 160, 110)
 
@@ -703,7 +703,7 @@ class EquipmentScene(QGraphicsScene):
         item.add_labels_to_scene(self)
         self.save_schema()
 
-    def add_connection(self, start_port, end_port, style=None):
+    def add_connection(self, start_port, end_port, style=None): #Создает соединение между портами устройств
         # Проверка на соединение с самим собой
         if start_port.parentItem() == end_port.parentItem():
             QMessageBox.warning(None, "Ошибка", "Нельзя соединять порты одного устройства!")
@@ -744,12 +744,12 @@ class EquipmentScene(QGraphicsScene):
         self.connections.append(connection)
         self.save_schema()
 
-    def update_connections_for_port(self, port):
+    def update_connections_for_port(self, port): #Обновляет соединения при перемещении устройства
         for conn in self.connections:
             if conn.start_port == port or conn.end_port == port:
                 conn.update_path()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event): #Начало перетаскивания
         item = self.itemAt(event.scenePos(), QTransform())
         if event.button() == Qt.LeftButton and isinstance(item, PortItem):
             self.connection_start = item
@@ -767,7 +767,7 @@ class EquipmentScene(QGraphicsScene):
 
         super().mousePressEvent(event)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event): #Перетаскивание линии
         if self.connection_start and self.temp_connection:
             start_pos = self.connection_start.scenePos()
             end_pos = event.scenePos()
@@ -791,7 +791,7 @@ class EquipmentScene(QGraphicsScene):
 
         super().mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event): #Завершение соединения
         if self.connection_start and event.button() == Qt.LeftButton:
             items = self.items(event.scenePos())
             end_port = None
@@ -817,7 +817,7 @@ class EquipmentScene(QGraphicsScene):
 
         super().mouseReleaseEvent(event)
 
-class MainWindow(QMainWindow):
+class MainWindow(QMainWindow): #Главное окно приложения
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Создание и соединение оборудования")
@@ -828,12 +828,12 @@ class MainWindow(QMainWindow):
         self.create_bottom_buttons()
         self.prompt_for_schema_action()
         
-    def create_scene_and_view(self):
+    def create_scene_and_view(self): #Создает сцену и виджет просмотра
         self.scene = EquipmentScene()
         self.view = EquipmentView(self.scene)
         self.setCentralWidget(self.view)
     
-    def create_bottom_buttons(self):
+    def create_bottom_buttons(self): #Добавляет кнопки управления
         self.bottom_layout = QVBoxLayout()
         self.type_button = QPushButton("Создать тип оборудования")
         self.instance_button = QPushButton("Создать экземпляр оборудования")
@@ -848,7 +848,7 @@ class MainWindow(QMainWindow):
         bottom_widget.setLayout(self.bottom_layout)
         self.setMenuWidget(bottom_widget)
     
-    def prompt_for_schema_action(self):
+    def prompt_for_schema_action(self): #Запрашивает действие при запуске
         reply = QMessageBox.question(
             self, 
             'Выбор действия',
@@ -861,7 +861,7 @@ class MainWindow(QMainWindow):
         elif reply == QMessageBox.No:
             self.open_schema()
     
-    def new_schema(self):
+    def new_schema(self): #Создает новую схему
         filename, ok = QInputDialog.getText(
             self, 'Новая схема',
             'Введите имя для новой схемы (без расширения):'
@@ -886,7 +886,7 @@ class MainWindow(QMainWindow):
             # Создаем пример типа оборудования
             self.create_sample_equipment_type()
     
-    def create_sample_equipment_type(self):
+    def create_sample_equipment_type(self): #Создает пример типа оборудования
         sample_type = os.path.join(self.current_schema_path, "equipment_types", "Sample.xml")
         if not os.path.exists(sample_type):
             root = ET.Element("equipment_type")
@@ -898,7 +898,7 @@ class MainWindow(QMainWindow):
             tree = ET.ElementTree(root)
             tree.write(sample_type, encoding="utf-8", xml_declaration=True)
     
-    def open_schema(self):
+    def open_schema(self): #Открывает схему
         options = QFileDialog.Options()
         schema_dir = QFileDialog.getExistingDirectory(
             self, "Открыть схему", "schemas", options=options)
@@ -912,7 +912,7 @@ class MainWindow(QMainWindow):
             base_name = os.path.basename(schema_dir)
             self.setWindowTitle(f"Схема оборудования - {base_name}")
     
-    def save_schema(self):
+    def save_schema(self): #Сохраняет схему
         if not self.current_schema_path:
             self.save_schema_as()
             return
@@ -920,7 +920,7 @@ class MainWindow(QMainWindow):
         if self.scene.save_schema():
             QMessageBox.information(self, 'Сохранено', 'Схема успешно сохранена!')
     
-    def save_schema_as(self):
+    def save_schema_as(self): #Сохраняет схему
         options = QFileDialog.Options()
         schema_dir = QFileDialog.getExistingDirectory(
             self, "Сохранить схему как", "schemas", options=options)
@@ -932,7 +932,7 @@ class MainWindow(QMainWindow):
             base_name = os.path.basename(schema_dir)
             self.setWindowTitle(f"Схема оборудования - {base_name}")
     
-    def add_equipment_type(self):
+    def add_equipment_type(self): #Открывает диалог создания типа оборудования
         if not self.current_schema_path:
             QMessageBox.warning(self, 'Ошибка', 'Сначала создайте или откройте схему!')
             return
@@ -940,7 +940,7 @@ class MainWindow(QMainWindow):
         dialog = EquipmentTypeDialog(self.current_schema_path)
         dialog.exec_()
     
-    def create_instance(self):
+    def create_instance(self): #Открывает диалог создания экземпляра оборудования
         if not self.current_schema_path:
             QMessageBox.warning(self, 'Ошибка', 'Сначала создайте или откройте схему!')
             return
